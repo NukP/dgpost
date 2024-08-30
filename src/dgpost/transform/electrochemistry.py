@@ -1,14 +1,12 @@
 """
-**electrochemistry**: calculations relevant in electrochemistry
----------------------------------------------------------------
-.. codeauthor:: 
+.. codeauthor::
     Peter Kraus
 
-Includes functions for calculating applied voltage correction via the 
-:func:`~dgpost.transform.electrochemistry.nernst` equation, calculation of the 
-Faradaic efficiency (:func:`~dgpost.transform.electrochemistry.fe`), as well as 
-the calculation of total :func:`~dgpost.transform.electrochemistry.charge`, and 
-the :func:`~dgpost.transform.electrochemistry.average_current` from the total 
+Includes functions for calculating applied voltage correction via the
+:func:`~dgpost.transform.electrochemistry.nernst` equation, calculation of the
+Faradaic efficiency (:func:`~dgpost.transform.electrochemistry.fe`), as well as
+the calculation of total :func:`~dgpost.transform.electrochemistry.charge`, and
+the :func:`~dgpost.transform.electrochemistry.average_current` from the total
 charge and timestamps.
 
 .. rubric:: Functions
@@ -22,7 +20,6 @@ charge and timestamps.
 
 """
 import pint
-from yadg.dgutils import ureg
 import numpy as np
 import pandas as pd
 from typing import Iterable
@@ -34,6 +31,8 @@ from dgpost.utils.helpers import (
     name_to_chem,
     electrons_from_smiles,
 )
+
+ureg = pint.get_application_registry()
 
 
 @load_data(
@@ -48,10 +47,10 @@ from dgpost.utils.helpers import (
 )
 def nernst(
     Ewe: pint.Quantity,
-    R: pint.Quantity = ureg.Quantity(0.0, "Ω"),
-    I: pint.Quantity = ureg.Quantity(0.0, "A"),
-    Eref: pint.Quantity = ureg.Quantity(0.0, "V"),
-    T: pint.Quantity = ureg.Quantity(298.15, "K"),
+    R: pint.Quantity = pint.Quantity(0.0, "Ω"),
+    I: pint.Quantity = pint.Quantity(0.0, "A"),
+    Eref: pint.Quantity = pint.Quantity(0.0, "V"),
+    T: pint.Quantity = pint.Quantity(298.15, "K"),
     n: int = None,
     Q: float = None,
     pH: float = None,
@@ -59,8 +58,8 @@ def nernst(
 ) -> pint.Quantity:
     """
     Correct measured voltage to calculate the applied voltage, using corrections
-    for Ohmic drop, reference potential vs RHE, and ionic concentration using 
-    the Nernst equation, either by providing :math:`Q` and :math:`n`, or by 
+    for Ohmic drop, reference potential vs RHE, and ionic concentration using
+    the Nernst equation, either by providing :math:`Q` and :math:`n`, or by
     providing the :math:`pH`.
 
     This function corrects the measured voltage :math:`E_\\text{we}` to applied
@@ -72,19 +71,19 @@ def nernst(
         E &= E_\\text{we} - R |I| + E_\\text{ref} + E_N \\\\
         E_N &= - \\frac{\\overline{R} T}{nF} ln(Q) = \\frac{\\overline{R} T}{F} ln(10) \\text{pH}
 
-    where :math:`R |I|` is the product of cell resistance and the magnitude of the 
-    applied current, :math:`E_\\text{ref}` is the potential of the reference electrode 
-    vs RHE, :math:`\\overline{R}` is the molar gas constant, :math:`T` is the 
-    temperature, :math:`n` is the number of electrones transferred, :math:`F` is 
-    the Faraday constant, :math:`Q` is the reaction quotient, and :math:`\\text{pH}` 
+    where :math:`R |I|` is the product of cell resistance and the magnitude of the
+    applied current, :math:`E_\\text{ref}` is the potential of the reference electrode
+    vs RHE, :math:`\\overline{R}` is the molar gas constant, :math:`T` is the
+    temperature, :math:`n` is the number of electrones transferred, :math:`F` is
+    the Faraday constant, :math:`Q` is the reaction quotient, and :math:`\\text{pH}`
     is the pH of the electrolyte.
 
     .. note ::
 
-        The Ohmic loss :math:`R |I|` always acts against the magnitude of the working 
-        potential :math:`E_\\text{we}`. If :math:`E_\\text{we} < 0~\\text{V}`, the Ohmic 
+        The Ohmic loss :math:`R |I|` always acts against the magnitude of the working
+        potential :math:`E_\\text{we}`. If :math:`E_\\text{we} < 0~\\text{V}`, the Ohmic
         term :math:`R |I|` is added to :math:`E_\\text{we}` to reduce its magnitude.
-    
+
     Parameters
     ----------
     Ewe
@@ -92,19 +91,19 @@ def nernst(
         By default in V.
 
     R
-        The resistance of the cell. By default in Ω. 
+        The resistance of the cell. By default in Ω.
 
     I
         The applied current. By default in A.
 
     Eref
-        The potential of the reference electrode with respect to RHE. 
+        The potential of the reference electrode with respect to RHE.
         By default in V.
-    
+
     T
         Temperature of the working electrode, used in the Nernst equation.
         By default 298.15 K.
-    
+
     n
         Number of electrons transferred in the process described by the Nernst
         equation. Must be specified along ``Q``, cannot be specified with ``pH``.
@@ -121,7 +120,7 @@ def nernst(
 
     output
         Name of the output variable. Defaults to ``Eapp``.
-    
+
     Returns
     -------
     dict(output, E) : dict[str, pint.Quantity]

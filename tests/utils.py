@@ -1,68 +1,10 @@
 import pytest
-import os
-import json
-import yadg.core
 import pandas as pd
 import numpy as np
 import uncertainties.unumpy as unp
 from PIL import Image, ImageChops
-from typing import Sequence
-
-
-def datagram_from_input(input, parser, datadir):
-    schema = {
-        "metadata": {
-            "provenance": "manual",
-            "schema_version": "0.1",
-            "timezone": input.get("timezone", "UTC"),
-        },
-        "steps": [
-            {
-                "parser": parser,
-                "import": {
-                    "prefix": input.get("prefix", ""),
-                    "suffix": input.get("suffix", ""),
-                    "contains": input.get("contains", ""),
-                    "encoding": input.get("encoding", "utf-8"),
-                },
-                "parameters": input.get("parameters", {}),
-            }
-        ],
-    }
-    if "case" in input:
-        schema["steps"][0]["import"]["files"] = [input["case"]]
-    elif "files" in input:
-        schema["steps"][0]["import"]["files"] = input["files"]
-    elif "folders" in input:
-        schema["steps"][0]["import"]["folders"] = input["folders"]
-    os.chdir(datadir)
-    assert yadg.core.validators.validate_schema(schema)
-    return yadg.core.process_schema(schema)
-
-
-def standard_datagram_test(datagram, testspec):
-    assert yadg.core.validators.validate_datagram(datagram), "datagram is invalid"
-    assert len(datagram["steps"]) == testspec["nsteps"], "wrong number of steps"
-    steps = datagram["steps"][testspec["step"]]["data"]
-    assert len(steps) == testspec["nrows"], "wrong number of timesteps in a step"
-    json.dumps(datagram)
-
-
-def pars_datagram_test(datagram, testspec):
-    steps = datagram["steps"][testspec["step"]]["data"]
-    tstep = steps[testspec["point"]]
-    for tk, tv in testspec["pars"].items():
-        if tk != "uts":
-            rd = "raw" if tv.get("raw", True) else "derived"
-            assert (
-                len(tstep[rd][tk].keys()) == 3
-            ), "value not in [val, dev, unit] format"
-            compare_result_dicts(
-                tstep[rd][tk],
-                {"n": tv["value"], "s": tv["sigma"], "u": tv["unit"]},
-            )
-        else:
-            assert tstep[tk] == tv["value"], "wrong uts"
+import datatree
+import xarray as xr
 
 
 def compare_result_dicts(result, reference, atol=1e-6):
@@ -71,10 +13,10 @@ def compare_result_dicts(result, reference, atol=1e-6):
     assert result["u"] == reference["u"]
 
 
-def compare_dfs(ref, df, order=False, rtol=1e-5):
+def compare_dfs(ref, df, order=False, rtol=1e-5, meta=True):
     if "units" in ref.attrs or "units" in df.attrs:
         assert ref.attrs.get("units") == df.attrs.get("units")
-    if "meta" in ref.attrs or "meta" in df.attrs:
+    if meta and "meta" in ref.attrs or "meta" in df.attrs:
         assert "provenance" in df.attrs["meta"]
         rrec = ref.attrs.get("meta", {}).get("recipe")
         drec = df.attrs.get("meta", {}).get("recipe")
@@ -114,3 +56,18 @@ def compare_images(path_one, path_two):
     equal_content = not difference.getbbox()
 
     assert equal_content
+
+
+def compare_datatrees(ret: datatree.DataTree, ref: datatree.DataTree):
+    for k in ret:
+        assert k in ref, f"Entry {k} not present in reference DataTree."
+    for k in ref:
+        assert k in ret, f"Entry {k} not present in result DataTree."
+
+    for k in ret:
+        if isinstance(ret[k], datatree.DataTree):
+            compare_datatrees(ret[k], ref[k])
+        elif isinstance(ret[k], (xr.Dataset, xr.DataArray)):
+            assert ret[k].to_dict() == ref[k].to_dict()
+        else:
+            raise RuntimeError(f"Unknown entry '{k}' of type '{type(k)}'.")

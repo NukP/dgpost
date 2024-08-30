@@ -1,31 +1,29 @@
 """
-**save**: Save a table into a file.
------------------------------------
-.. codeauthor:: 
-    Ueli Sauter, 
+.. codeauthor::
+    Ueli Sauter,
     Peter Kraus
 
 The function :func:`dgpost.utils.save.save` processes the below specification
 in order to save the given DataFrame:
 
 .. _dgpost.recipe save:
-.. autopydantic_model:: dgbowl_schemas.dgpost.recipe_1_1.save.Save
+.. autopydantic_model:: dgbowl_schemas.dgpost.recipe.Save
 
 .. note::
 
-    Metadata, including the `recipe` used to create the saved file, as well as 
-    provenance information about the version of dgpost used to process the 
+    Metadata, including the `recipe` used to create the saved file, as well as
+    provenance information about the version of dgpost used to process the
     `recipe` are saved into the ``df.attrs["meta"]`` entry and therefore only
     available in ``pkl`` or ``json`` exports.
 
 """
 import json
 import os
-from yadg.dgutils.pintutils import ureg
 from uncertainties import unumpy as unp
 from importlib import metadata
 import pandas as pd
 import logging
+import pint
 
 from dgpost.utils.helpers import get_units
 
@@ -36,6 +34,7 @@ def save(
     table: pd.DataFrame,
     path: str,
     type: str = None,
+    columns: list[str] = None,
     sigma: bool = True,
     meta: dict = None,
 ) -> None:
@@ -48,6 +47,19 @@ def save(
         pass
     else:
         raise ValueError(f"Parent folder '{folder}' provided in 'path' does not exist.")
+
+    if columns is None:
+        pass
+    else:
+        cols = []
+        for col in columns:
+            if col not in table.columns:
+                logger.warning(
+                    f"Column '{col}' is not present in table and will not be exported."
+                )
+            else:
+                cols.append(col)
+        table = table[cols]
 
     # strip uncertainties if required
     if not sigma:
@@ -91,7 +103,7 @@ def save(
         if unit is None:
             names.append(col)
         else:
-            names.append((col[0] + f" [{ureg.Unit(unit):~P}]", *col[1:]))
+            names.append((col[0] + f" [{pint.Unit(unit):~P}]", *col[1:]))
 
     savedf = table.copy()
     if all([isinstance(name, str) for name in names]):

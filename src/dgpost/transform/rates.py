@@ -1,31 +1,30 @@
 """
-**rates**: determining molar rates of chemical species
-------------------------------------------------------
-.. codeauthor:: 
+.. codeauthor::
     Peter Kraus
 
-Includes functions to convert mixture compositions (concentration, mol fraction) 
-from instantaneous flow data or continuous batch data to rates (dimension of 
+Includes functions to convert mixture compositions (concentration, mol fraction)
+from instantaneous flow data or continuous batch data to rates (dimension of
 ``[quantity]/[time]``). The :func:`~dgpost.transform.rates.flow_to_molar` function
-is useful for converting gas-phase or liquid flows, while 
-:func:`~dgpost.transform.rates.batch_to_molar` can be used to determine formation 
+is useful for converting gas-phase or liquid flows, while
+:func:`~dgpost.transform.rates.batch_to_molar` can be used to determine formation
 rates from the concentration profile of a batch mixture.
 
 .. rubric:: Functions
 
 .. autosummary::
-  
+
     batch_to_molar
     flow_to_molar
 
 """
 import pint
-from yadg.dgutils import ureg
 import pandas as pd
 import numpy as np
 from typing import Iterable
 
 from dgpost.utils.helpers import load_data
+
+ureg = pint.get_application_registry()
 
 
 @load_data(
@@ -39,8 +38,8 @@ def flow_to_molar(
     flow: pint.Quantity,
     c: dict[str, pint.Quantity] = None,
     x: dict[str, pint.Quantity] = None,
-    Tref: pint.Quantity = ureg.Quantity(273.15, "K"),
-    pref: pint.Quantity = ureg.Quantity(1, "atm"),
+    Tref: pint.Quantity = pint.Quantity(273.15, "K"),
+    pref: pint.Quantity = pint.Quantity(1, "atm"),
     output: str = "rate",
 ) -> dict[str, pint.Quantity]:
     """
